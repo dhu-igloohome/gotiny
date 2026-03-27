@@ -29,6 +29,33 @@
       "goodQty": "总合格数",
       "progress": "进度"
     },
+    "filters": {
+      "drawingNo": "按图纸号搜索",
+      "customerName": "按客户名筛选",
+      "allStatus": "全部状态",
+      "inProduction": "生产中",
+      "completed": "已完成"
+    },
+    "importResult": {
+      "success": "成功",
+      "failed": "失败",
+      "columns": {
+        "drawingNo": "图纸编号",
+        "result": "结果",
+        "reason": "原因"
+      }
+    },
+    "detail": {
+      "title": "图纸详情",
+      "notFound": "未找到图纸详情",
+      "scrapQty": "报废数",
+      "operationStatus": "工序状态",
+      "status": {
+        "ready": "等待",
+        "inProgress": "进行中",
+        "completed": "完成"
+      }
+    },
     "status": {
       "loading": "加载中...",
       "empty": "暂无图纸",

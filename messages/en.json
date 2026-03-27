@@ -29,6 +29,33 @@
       "goodQty": "Good Qty",
       "progress": "Progress"
     },
+    "filters": {
+      "drawingNo": "Search by drawing no",
+      "customerName": "Filter by customer",
+      "allStatus": "All statuses",
+      "inProduction": "In production",
+      "completed": "Completed"
+    },
+    "importResult": {
+      "success": "Success",
+      "failed": "Failed",
+      "columns": {
+        "drawingNo": "Drawing No",
+        "result": "Result",
+        "reason": "Reason"
+      }
+    },
+    "detail": {
+      "title": "Drawing Detail",
+      "notFound": "Drawing not found",
+      "scrapQty": "Scrap Qty",
+      "operationStatus": "Operation status",
+      "status": {
+        "ready": "Waiting",
+        "inProgress": "In Progress",
+        "completed": "Completed"
+      }
+    },
     "status": {
       "loading": "Loading...",
       "empty": "No drawings yet",

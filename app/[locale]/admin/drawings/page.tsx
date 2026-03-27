@@ -1,10 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useTranslations } from "next-intl";
+import Link from "next/link";
+import { useLocale, useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
+import { Select } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeaderCell, TableRow } from "@/components/ui/table";
 
 type DrawingRow = {
@@ -14,6 +17,13 @@ type DrawingRow = {
   demandQty: number;
   goodQty: number;
   progressPercent: number;
+  status: "IN_PRODUCTION" | "COMPLETED" | string;
+};
+
+type ImportResult = {
+  ok: boolean;
+  drawingNo: string;
+  reason?: string;
 };
 
 const SAMPLE_IMPORT_JSON = JSON.stringify(
@@ -34,18 +44,29 @@ const SAMPLE_IMPORT_JSON = JSON.stringify(
 
 export default function AdminDrawingsPage() {
   const t = useTranslations("drawings");
+  const locale = useLocale();
   const [drawings, setDrawings] = useState<DrawingRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [showImport, setShowImport] = useState(false);
   const [importJson, setImportJson] = useState(SAMPLE_IMPORT_JSON);
   const [feedback, setFeedback] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [importResults, setImportResults] = useState<ImportResult[]>([]);
+  const [filterDrawingNo, setFilterDrawingNo] = useState("");
+  const [filterCustomer, setFilterCustomer] = useState("");
+  const [filterStatus, setFilterStatus] = useState("");
 
   const isEmpty = useMemo(() => !loading && drawings.length === 0, [loading, drawings.length]);
 
   const loadDrawings = useCallback(async () => {
     setLoading(true);
-    const response = await fetch("/api/admin/drawings", { cache: "no-store" }).catch(() => null);
+    const query = new URLSearchParams();
+    if (filterDrawingNo.trim()) query.set("drawingNo", filterDrawingNo.trim());
+    if (filterCustomer.trim()) query.set("customer", filterCustomer.trim());
+    if (filterStatus) query.set("status", filterStatus);
+    const response = await fetch(`/api/admin/drawings?${query.toString()}`, { cache: "no-store" }).catch(
+      () => null,
+    );
     if (!response || !response.ok) {
       setFeedback(t("status.importFailed"));
       setLoading(false);
@@ -54,7 +75,7 @@ export default function AdminDrawingsPage() {
     const data = (await response.json()) as { drawings?: DrawingRow[] };
     setDrawings(data.drawings ?? []);
     setLoading(false);
-  }, [t]);
+  }, [filterCustomer, filterDrawingNo, filterStatus, t]);
 
   useEffect(() => {
     void loadDrawings();
@@ -63,6 +84,7 @@ export default function AdminDrawingsPage() {
   async function onImport() {
     setSubmitting(true);
     setFeedback("");
+    setImportResults([]);
     try {
       const payload = JSON.parse(importJson) as unknown;
       const response = await fetch("/api/admin/drawings/import", {
@@ -75,8 +97,13 @@ export default function AdminDrawingsPage() {
         setFeedback(data.error ?? t("status.importFailed"));
         return;
       }
-      setFeedback(t("status.importSuccess"));
-      setShowImport(false);
+      const results = (data.results ?? []) as ImportResult[];
+      setImportResults(results);
+      setFeedback(
+        results.some((item) => !item.ok)
+          ? `${t("status.importSuccess")} (${results.filter((item) => item.ok).length}/${results.length})`
+          : t("status.importSuccess"),
+      );
       await loadDrawings();
     } catch {
       setFeedback(t("status.importFailed"));
@@ -94,6 +121,24 @@ export default function AdminDrawingsPage() {
             <p className="mt-1 text-sm text-zinc-600">{t("subtitle")}</p>
           </div>
           <Button onClick={() => setShowImport(true)}>{t("importButton")}</Button>
+        </div>
+
+        <div className="grid gap-3 rounded-xl border border-zinc-200 bg-white p-4 sm:grid-cols-3">
+          <Input
+            placeholder={t("filters.drawingNo")}
+            value={filterDrawingNo}
+            onChange={(event) => setFilterDrawingNo(event.target.value)}
+          />
+          <Input
+            placeholder={t("filters.customerName")}
+            value={filterCustomer}
+            onChange={(event) => setFilterCustomer(event.target.value)}
+          />
+          <Select value={filterStatus} onChange={(event) => setFilterStatus(event.target.value)}>
+            <option value="">{t("filters.allStatus")}</option>
+            <option value="IN_PRODUCTION">{t("filters.inProduction")}</option>
+            <option value="COMPLETED">{t("filters.completed")}</option>
+          </Select>
         </div>
 
         {feedback ? <p className="text-sm text-zinc-700">{feedback}</p> : null}
@@ -120,7 +165,11 @@ export default function AdminDrawingsPage() {
                   <TableBody>
                     {drawings.map((row) => (
                       <TableRow key={row.id}>
-                        <TableCell className="font-medium text-zinc-900">{row.drawingNo}</TableCell>
+                        <TableCell className="font-medium text-zinc-900">
+                          <Link href={`/${locale}/admin/drawings/${row.id}`} className="underline-offset-2 hover:underline">
+                            {row.drawingNo}
+                          </Link>
+                        </TableCell>
                         <TableCell>{row.customerName || "-"}</TableCell>
                         <TableCell>{row.demandQty}</TableCell>
                         <TableCell>{row.goodQty}</TableCell>
@@ -160,6 +209,28 @@ export default function AdminDrawingsPage() {
                     {t("submitImport")}
                   </Button>
                 </div>
+                {importResults.length > 0 ? (
+                  <div className="max-h-56 overflow-auto rounded-lg border border-zinc-200">
+                    <Table>
+                      <TableHead>
+                        <TableRow>
+                          <TableHeaderCell>{t("importResult.columns.drawingNo")}</TableHeaderCell>
+                          <TableHeaderCell>{t("importResult.columns.result")}</TableHeaderCell>
+                          <TableHeaderCell>{t("importResult.columns.reason")}</TableHeaderCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {importResults.map((item, index) => (
+                          <TableRow key={`${item.drawingNo}-${index}`}>
+                            <TableCell>{item.drawingNo}</TableCell>
+                            <TableCell>{item.ok ? t("importResult.success") : t("importResult.failed")}</TableCell>
+                            <TableCell>{item.reason ?? "-"}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                ) : null}
               </CardContent>
             </Card>
           </div>

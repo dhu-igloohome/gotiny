@@ -26,18 +26,45 @@ export async function POST(request: Request) {
 
   const service = new AdminDrawingService(context.organizationId);
 
-  try {
-    const created = await service.importDrawings(drawings, context.userId);
-    return NextResponse.json({
-      ok: true,
-      importedCount: created.length,
-      created,
-    });
-  } catch (error) {
-    if (error instanceof ValidationError) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
-    }
+  const results: Array<
+    | { ok: true; drawingNo: string; drawingId: string; operationIds: string[] }
+    | { ok: false; drawingNo: string; reason: string }
+  > = [];
 
-    return NextResponse.json({ error: "Import failed." }, { status: 500 });
+  for (const drawing of drawings) {
+    const drawingNo = drawing?.drawingNo ?? "UNKNOWN";
+    try {
+      const created = await service.importOneDrawing(drawing, context.userId);
+      results.push({
+        ok: true,
+        drawingNo: created.drawingNo,
+        drawingId: created.drawingId,
+        operationIds: created.operationIds,
+      });
+    } catch (error) {
+      if (error instanceof ValidationError) {
+        results.push({
+          ok: false,
+          drawingNo,
+          reason: error.message,
+        });
+      } else {
+        results.push({
+          ok: false,
+          drawingNo,
+          reason: "Unexpected import error.",
+        });
+      }
+    }
   }
+
+  const successCount = results.filter((item) => item.ok).length;
+  const failCount = results.length - successCount;
+
+  return NextResponse.json({
+    ok: failCount === 0,
+    importedCount: successCount,
+    failedCount: failCount,
+    results,
+  });
 }

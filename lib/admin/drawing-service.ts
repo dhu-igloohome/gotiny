@@ -15,7 +15,30 @@ export type ImportDrawingInput = {
   operations: ImportOperationInput[];
 };
 
+export type ImportSuccessResult = {
+  ok: true;
+  drawingId: string;
+  drawingNo: string;
+  operationIds: string[];
+};
+
+export type ImportFailureResult = {
+  ok: false;
+  drawingNo: string;
+  reason: string;
+};
+
 export class AdminDrawingService extends BaseService {
+  async importOneDrawing(drawing: ImportDrawingInput, actorUserId?: string): Promise<ImportSuccessResult> {
+    const [created] = await this.importDrawings([drawing], actorUserId);
+    return {
+      ok: true,
+      drawingId: created.drawingId,
+      drawingNo: created.drawingNo,
+      operationIds: created.operationIds,
+    };
+  }
+
   async importDrawings(drawings: ImportDrawingInput[], actorUserId?: string) {
     if (!Array.isArray(drawings) || drawings.length === 0) {
       throw new ValidationError("drawings must be a non-empty array.");
