@@ -21,7 +21,11 @@ function isWorkerPath(pathname: string): boolean {
 }
 
 function isProtectedApiPath(pathname: string): boolean {
-  return pathname.startsWith("/api/") && !pathname.startsWith("/api/auth/");
+  return (
+    pathname.startsWith("/api/") &&
+    !pathname.startsWith("/api/auth/") &&
+    !pathname.startsWith("/api/test-debug/")
+  );
 }
 
 export async function middleware(request: NextRequest) {

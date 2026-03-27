@@ -12,6 +12,7 @@ type DebugState = {
 };
 
 const DEFAULT_OPERATION_ID = "cmn8f7tsq0004kktp3nofycqj";
+const DEBUG_API_URL = "/api/test-debug/report";
 
 function makeKey(prefix: string): string {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -31,11 +32,31 @@ export default function TestReportPage() {
   const parsedScrap = useMemo(() => Number(scrapQty), [scrapQty]);
 
   async function loadState() {
-    const response = await fetch("/api/test-debug/report", { cache: "no-store" });
-    const data = (await response.json()) as { state?: DebugState };
-    setState(data.state ?? null);
-    if (data.state) {
-      setExpectedLockVersion(data.state.lockVersion);
+    console.log("[test-report] loadState:start", { url: DEBUG_API_URL });
+    try {
+      const response = await fetch(DEBUG_API_URL, { cache: "no-store" });
+      const data = (await response.json()) as { state?: DebugState; error?: string };
+      console.log("[test-report] loadState:done", { status: response.status, data });
+      if (!response.ok) {
+        setResult(JSON.stringify({ status: response.status, data }, null, 2));
+        return;
+      }
+      setState(data.state ?? null);
+      if (data.state) {
+        setExpectedLockVersion(data.state.lockVersion);
+      }
+    } catch (error) {
+      console.error("[test-report] loadState:error", error);
+      setResult(
+        JSON.stringify(
+          {
+            error: "loadState failed",
+            detail: error instanceof Error ? error.message : String(error),
+          },
+          null,
+          2,
+        ),
+      );
     }
   }
 
@@ -47,7 +68,15 @@ export default function TestReportPage() {
     setLoading(true);
     setResult("");
     try {
-      const response = await fetch("/api/test-debug/report", {
+      console.log("[test-report] submitOnce:start", {
+        url: DEBUG_API_URL,
+        operationId,
+        goodQty: parsedGood,
+        scrapQty: parsedScrap,
+        idempotencyKey,
+        expectedLockVersion,
+      });
+      const response = await fetch(DEBUG_API_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -59,8 +88,21 @@ export default function TestReportPage() {
         }),
       });
       const data = await response.json();
+      console.log("[test-report] submitOnce:done", { status: response.status, data });
       setResult(JSON.stringify({ status: response.status, data }, null, 2));
       await loadState();
+    } catch (error) {
+      console.error("[test-report] submitOnce:error", error);
+      setResult(
+        JSON.stringify(
+          {
+            error: "submitOnce failed",
+            detail: error instanceof Error ? error.message : String(error),
+          },
+          null,
+          2,
+        ),
+      );
     } finally {
       setLoading(false);
     }
@@ -70,9 +112,11 @@ export default function TestReportPage() {
     setLoading(true);
     setResult("");
     try {
-      const response = await fetch("/api/test-debug/report", { cache: "no-store" });
+      console.log("[test-report] concurrent:start", { url: DEBUG_API_URL });
+      const response = await fetch(DEBUG_API_URL, { cache: "no-store" });
       const snapshot = (await response.json()) as { state?: DebugState };
       const lockVersion = snapshot.state?.lockVersion ?? 0;
+      console.log("[test-report] concurrent:snapshot", { status: response.status, lockVersion });
 
       const payloadA = {
         operationId,
@@ -90,12 +134,12 @@ export default function TestReportPage() {
       };
 
       const [a, b] = await Promise.all([
-        fetch("/api/test-debug/report", {
+        fetch(DEBUG_API_URL, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payloadA),
         }),
-        fetch("/api/test-debug/report", {
+        fetch(DEBUG_API_URL, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payloadB),
@@ -103,6 +147,12 @@ export default function TestReportPage() {
       ]);
 
       const [dataA, dataB] = await Promise.all([a.json(), b.json()]);
+      console.log("[test-report] concurrent:done", {
+        requestAStatus: a.status,
+        requestBStatus: b.status,
+        dataA,
+        dataB,
+      });
       setResult(
         JSON.stringify(
           {
@@ -115,6 +165,18 @@ export default function TestReportPage() {
         ),
       );
       await loadState();
+    } catch (error) {
+      console.error("[test-report] concurrent:error", error);
+      setResult(
+        JSON.stringify(
+          {
+            error: "concurrent test failed",
+            detail: error instanceof Error ? error.message : String(error),
+          },
+          null,
+          2,
+        ),
+      );
     } finally {
       setLoading(false);
     }
