@@ -51,8 +51,11 @@
       "drawingNo": "按图纸号搜索",
       "customerName": "按客户名筛选",
       "allStatus": "全部状态",
+      "draft": "草稿",
       "inProduction": "生产中",
+      "outsourcing": "外协中",
       "completed": "已完成",
+      "cancelled": "已取消",
       "apply": "应用筛选",
       "reset": "重置"
     },
@@ -89,6 +92,7 @@
     "status": {
       "loading": "加载中...",
       "empty": "暂无图纸",
+      "emptyHint": "你可以先批量导入一批图纸",
       "importSuccess": "导入成功",
       "importFailed": "导入失败"
     }

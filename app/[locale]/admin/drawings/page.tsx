@@ -79,6 +79,21 @@ export default function AdminDrawingsPage() {
 
   const isEmpty = useMemo(() => !loading && drawings.length === 0, [loading, drawings.length]);
 
+  function getStatusLabel(status: string) {
+    if (status === "DRAFT") return t("filters.draft");
+    if (status === "IN_PRODUCTION") return t("filters.inProduction");
+    if (status === "OUTSOURCING") return t("filters.outsourcing");
+    if (status === "COMPLETED") return t("filters.completed");
+    if (status === "CANCELLED") return t("filters.cancelled");
+    return status;
+  }
+
+  function getStatusTone(status: string): "neutral" | "success" | "warning" {
+    if (status === "COMPLETED") return "success";
+    if (status === "IN_PRODUCTION" || status === "OUTSOURCING") return "warning";
+    return "neutral";
+  }
+
   useEffect(() => {
     setFilterDrawingNo(searchParams.get("drawingNo") ?? "");
     setFilterCustomer(searchParams.get("customer") ?? "");
@@ -270,8 +285,11 @@ export default function AdminDrawingsPage() {
           />
           <Select value={filterStatus} onChange={(event) => setFilterStatus(event.target.value)}>
             <option value="">{t("filters.allStatus")}</option>
+            <option value="DRAFT">{t("filters.draft")}</option>
             <option value="IN_PRODUCTION">{t("filters.inProduction")}</option>
+            <option value="OUTSOURCING">{t("filters.outsourcing")}</option>
             <option value="COMPLETED">{t("filters.completed")}</option>
+            <option value="CANCELLED">{t("filters.cancelled")}</option>
           </Select>
           <div className="sm:col-span-3 flex justify-end gap-2">
             <Button variant="outline" onClick={onResetFilters}>
@@ -294,7 +312,18 @@ export default function AdminDrawingsPage() {
           </CardHeader>
           <CardContent>
             {loading ? <p className="text-sm text-zinc-500">{t("status.loading")}</p> : null}
-            {isEmpty ? <p className="text-sm text-zinc-500">{t("status.empty")}</p> : null}
+            {isEmpty ? (
+              <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-6 text-center">
+                <p className="text-sm font-medium text-zinc-700">{t("status.empty")}</p>
+                <p className="mt-1 text-xs text-zinc-500">{t("status.emptyHint")}</p>
+                <div className="mt-4">
+                  <Button onClick={() => setShowImport(true)}>
+                    <Upload className="mr-2 h-4 w-4" />
+                    {t("importButton")}
+                  </Button>
+                </div>
+              </div>
+            ) : null}
             {!loading && !isEmpty ? (
               <div className="space-y-3">
                 <div className="overflow-x-auto">
@@ -321,9 +350,7 @@ export default function AdminDrawingsPage() {
                         <TableCell>{row.demandQty}</TableCell>
                         <TableCell>{row.goodQty}</TableCell>
                         <TableCell>
-                          <Badge tone={row.status === "COMPLETED" ? "success" : "warning"}>
-                            {row.status === "COMPLETED" ? t("filters.completed") : t("filters.inProduction")}
-                          </Badge>
+                          <Badge tone={getStatusTone(row.status)}>{getStatusLabel(row.status)}</Badge>
                         </TableCell>
                         <TableCell>
                           <div className="space-y-1">

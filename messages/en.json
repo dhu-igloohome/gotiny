@@ -51,8 +51,11 @@
       "drawingNo": "Search by drawing no",
       "customerName": "Filter by customer",
       "allStatus": "All statuses",
+      "draft": "Draft",
       "inProduction": "In production",
+      "outsourcing": "Outsourcing",
       "completed": "Completed",
+      "cancelled": "Cancelled",
       "apply": "Apply Filters",
       "reset": "Reset"
     },
@@ -89,6 +92,7 @@
     "status": {
       "loading": "Loading...",
       "empty": "No drawings yet",
+      "emptyHint": "Start by importing a batch of drawings",
       "importSuccess": "Import completed",
       "importFailed": "Import failed"
     }

@@ -41,7 +41,10 @@ export async function GET(request: Request) {
           },
         }
       : {}),
-    ...(status === "IN_PRODUCTION" || status === "COMPLETED" ? { status } : {}),
+    ...(status &&
+    ["DRAFT", "IN_PRODUCTION", "OUTSOURCING", "COMPLETED", "CANCELLED"].includes(status)
+      ? { status: status as "DRAFT" | "IN_PRODUCTION" | "OUTSOURCING" | "COMPLETED" | "CANCELLED" }
+      : {}),
   };
 
   const [total, drawings] = await prisma.$transaction([
