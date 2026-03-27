@@ -21,6 +21,17 @@
       "empty": "No report data in the last 7 days"
     }
   },
+  "adminShell": {
+    "brandSubtitle": "Manufacturing Admin",
+    "nav": {
+      "dashboard": "Dashboard",
+      "drawings": "Drawings"
+    },
+    "actions": {
+      "logout": "Logout",
+      "loggingOut": "Logging out..."
+    }
+  },
   "drawings": {
     "title": "Drawings",
     "subtitle": "Track progress and import in batch",
@@ -55,6 +66,9 @@
       "title": "Drawing Detail",
       "notFound": "Drawing not found",
       "scrapQty": "Scrap Qty",
+      "qrLabel": "Operation QR Code",
+      "copyQr": "Copy",
+      "printQr": "Print QR Cards",
       "operationStatus": "Operation status",
       "status": {
         "ready": "Waiting",

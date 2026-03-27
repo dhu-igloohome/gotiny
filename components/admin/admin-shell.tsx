@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useLocale } from "next-intl";
-import { BarChart3, Factory, FileSpreadsheet, Settings } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { useState } from "react";
+import { useLocale, useTranslations } from "next-intl";
+import { BarChart3, Factory, FileSpreadsheet, LogOut } from "lucide-react";
 
 type AdminShellProps = {
   children: React.ReactNode;
@@ -15,8 +16,19 @@ const navItems = [
 ];
 
 export function AdminShell({ children }: AdminShellProps) {
+  const t = useTranslations("adminShell");
   const locale = useLocale();
   const pathname = usePathname();
+  const router = useRouter();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  async function onLogout() {
+    if (isLoggingOut) return;
+    setIsLoggingOut(true);
+    await fetch("/api/auth/logout", { method: "POST" }).catch(() => null);
+    router.replace(`/${locale}/login`);
+    router.refresh();
+  }
 
   return (
     <div className="min-h-screen bg-zinc-100">
@@ -28,7 +40,7 @@ export function AdminShell({ children }: AdminShellProps) {
             </div>
             <div>
               <p className="text-sm font-semibold">GoTiny</p>
-              <p className="text-xs text-zinc-400">Manufacturing Admin</p>
+              <p className="text-xs text-zinc-400">{t("brandSubtitle")}</p>
             </div>
           </div>
 
@@ -47,7 +59,7 @@ export function AdminShell({ children }: AdminShellProps) {
                   }`}
                 >
                   <Icon className="h-4 w-4" />
-                  <span>{item.key === "dashboard" ? "看板" : "图纸管理"}</span>
+                  <span>{item.key === "dashboard" ? t("nav.dashboard") : t("nav.drawings")}</span>
                 </Link>
               );
             })}
@@ -56,10 +68,12 @@ export function AdminShell({ children }: AdminShellProps) {
           <div className="mt-auto pt-6">
             <button
               type="button"
-              className="flex w-full items-center gap-2 rounded-lg border border-zinc-700 px-3 py-2 text-sm text-zinc-300"
+              className="flex w-full items-center gap-2 rounded-lg border border-zinc-700 px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-800"
+              onClick={onLogout}
+              disabled={isLoggingOut}
             >
-              <Settings className="h-4 w-4" />
-              <span>系统设置</span>
+              <LogOut className="h-4 w-4" />
+              <span>{isLoggingOut ? t("actions.loggingOut") : t("actions.logout")}</span>
             </button>
           </div>
         </aside>

@@ -21,6 +21,17 @@
       "empty": "近7天暂无报工数据"
     }
   },
+  "adminShell": {
+    "brandSubtitle": "制造管理后台",
+    "nav": {
+      "dashboard": "看板",
+      "drawings": "图纸管理"
+    },
+    "actions": {
+      "logout": "退出登录",
+      "loggingOut": "退出中..."
+    }
+  },
   "drawings": {
     "title": "图纸列表",
     "subtitle": "查看图纸进度并支持批量导入",
@@ -55,6 +66,9 @@
       "title": "图纸详情",
       "notFound": "未找到图纸详情",
       "scrapQty": "报废数",
+      "qrLabel": "工序二维码",
+      "copyQr": "复制",
+      "printQr": "打印二维码卡片",
       "operationStatus": "工序状态",
       "status": {
         "ready": "等待",
