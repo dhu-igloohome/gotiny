@@ -48,6 +48,9 @@ export default function AdminHomePage() {
     { label: t("cards.scrapRate"), value: `${stats.scrapRatePercent}%`, icon: AlertTriangle },
     { label: t("cards.inProgressDrawingCount"), value: `${stats.inProgressDrawingCount}`, icon: Activity },
   ];
+  const trendData = stats.productionTrend ?? [];
+  const trendMax = trendData.reduce((max, item) => Math.max(max, item.goodQty, item.scrapQty), 0);
+  const hasTrendData = trendData.some((item) => item.goodQty > 0 || item.scrapQty > 0);
 
   return (
     <main className="space-y-6 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
@@ -78,22 +81,41 @@ export default function AdminHomePage() {
 
         <Card className="border-zinc-200">
           <CardHeader>
-            <CardTitle className="text-sm text-zinc-500">近7天产出趋势</CardTitle>
+            <div className="flex items-center justify-between gap-3">
+              <CardTitle className="text-sm text-zinc-500">{t("trend.title")}</CardTitle>
+              <div className="flex items-center gap-4 text-xs text-zinc-600">
+                <span className="inline-flex items-center gap-1">
+                  <span className="inline-block h-2.5 w-2.5 rounded bg-emerald-500" />
+                  {t("trend.goodQty")}
+                </span>
+                <span className="inline-flex items-center gap-1">
+                  <span className="inline-block h-2.5 w-2.5 rounded bg-amber-500" />
+                  {t("trend.scrapQty")}
+                </span>
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-7 gap-2">
-              {(stats.productionTrend ?? []).map((item) => {
-                const height = Math.max(8, Math.min(80, item.goodQty / 2));
-                return (
-                  <div key={item.date} className="flex flex-col items-center gap-2">
-                    <div className="flex h-24 w-full items-end justify-center rounded bg-zinc-100">
-                      <div className="w-5 rounded-t bg-zinc-900" style={{ height }} />
+            {!hasTrendData ? (
+              <p className="text-sm text-zinc-500">{t("trend.empty")}</p>
+            ) : (
+              <div className="grid grid-cols-7 gap-2">
+                {trendData.map((item) => {
+                  const safeMax = trendMax || 1;
+                  const goodHeight = Math.max(6, Math.round((item.goodQty / safeMax) * 80));
+                  const scrapHeight = Math.max(6, Math.round((item.scrapQty / safeMax) * 80));
+                  return (
+                    <div key={item.date} className="flex flex-col items-center gap-2">
+                      <div className="flex h-24 w-full items-end justify-center gap-1 rounded bg-zinc-100 px-1">
+                        <div className="w-4 rounded-t bg-emerald-500" style={{ height: goodHeight }} />
+                        <div className="w-4 rounded-t bg-amber-500" style={{ height: scrapHeight }} />
+                      </div>
+                      <p className="text-[10px] text-zinc-500">{item.date.slice(5)}</p>
                     </div>
-                    <p className="text-[10px] text-zinc-500">{item.date.slice(5)}</p>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            )}
           </CardContent>
         </Card>
       </section>

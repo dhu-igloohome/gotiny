@@ -13,6 +13,12 @@
     },
     "actions": {
       "viewDrawings": "View Drawings"
+    },
+    "trend": {
+      "title": "7-Day Output Trend",
+      "goodQty": "Good",
+      "scrapQty": "Scrap",
+      "empty": "No report data in the last 7 days"
     }
   },
   "drawings": {

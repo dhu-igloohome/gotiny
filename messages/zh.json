@@ -13,6 +13,12 @@
     },
     "actions": {
       "viewDrawings": "查看图纸列表"
+    },
+    "trend": {
+      "title": "近7天产出趋势",
+      "goodQty": "合格",
+      "scrapQty": "报废",
+      "empty": "近7天暂无报工数据"
     }
   },
   "drawings": {
