@@ -35,6 +35,7 @@ type DrawingsPagination = {
   total: number;
   totalPages: number;
 };
+const PAGE_SIZE_OPTIONS = ["10", "20", "50"] as const;
 
 const SAMPLE_IMPORT_JSON = JSON.stringify(
   [
@@ -68,6 +69,7 @@ export default function AdminDrawingsPage() {
   const [filterDrawingNo, setFilterDrawingNo] = useState("");
   const [filterCustomer, setFilterCustomer] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
+  const [filterPageSize, setFilterPageSize] = useState("10");
   const [pagination, setPagination] = useState<DrawingsPagination>({
     page: 1,
     pageSize: 10,
@@ -81,9 +83,17 @@ export default function AdminDrawingsPage() {
     setFilterDrawingNo(searchParams.get("drawingNo") ?? "");
     setFilterCustomer(searchParams.get("customer") ?? "");
     setFilterStatus(searchParams.get("status") ?? "");
+    const nextPageSize = searchParams.get("pageSize") ?? "10";
+    setFilterPageSize(PAGE_SIZE_OPTIONS.includes(nextPageSize as (typeof PAGE_SIZE_OPTIONS)[number]) ? nextPageSize : "10");
   }, [searchParams]);
 
-  function updateQuery(next: { drawingNo?: string; customer?: string; status?: string; page?: string }) {
+  function updateQuery(next: {
+    drawingNo?: string;
+    customer?: string;
+    status?: string;
+    page?: string;
+    pageSize?: string;
+  }) {
     const query = new URLSearchParams(searchParams.toString());
     const assign = (key: string, value?: string) => {
       if (!value || !value.trim()) {
@@ -96,7 +106,11 @@ export default function AdminDrawingsPage() {
     assign("customer", next.customer);
     assign("status", next.status);
     assign("page", next.page);
-    query.set("pageSize", "10");
+    if (next.pageSize && PAGE_SIZE_OPTIONS.includes(next.pageSize as (typeof PAGE_SIZE_OPTIONS)[number])) {
+      query.set("pageSize", next.pageSize);
+    } else if (!query.get("pageSize")) {
+      query.set("pageSize", "10");
+    }
     router.replace(`${pathname}?${query.toString()}`);
   }
 
@@ -136,6 +150,7 @@ export default function AdminDrawingsPage() {
       customer: filterCustomer,
       status: filterStatus,
       page: "1",
+      pageSize: filterPageSize,
     });
   }
 
@@ -148,6 +163,7 @@ export default function AdminDrawingsPage() {
       customer: "",
       status: "",
       page: "1",
+      pageSize: "10",
     });
   }
 
@@ -158,6 +174,18 @@ export default function AdminDrawingsPage() {
       customer: filterCustomer,
       status: filterStatus,
       page: String(safePage),
+      pageSize: filterPageSize,
+    });
+  }
+
+  function onPageSizeChange(nextPageSize: string) {
+    setFilterPageSize(nextPageSize);
+    updateQuery({
+      drawingNo: filterDrawingNo,
+      customer: filterCustomer,
+      status: filterStatus,
+      page: "1",
+      pageSize: nextPageSize,
     });
   }
 
@@ -228,11 +256,17 @@ export default function AdminDrawingsPage() {
             placeholder={t("filters.drawingNo")}
             value={filterDrawingNo}
             onChange={(event) => setFilterDrawingNo(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") onApplyFilters();
+            }}
           />
           <Input
             placeholder={t("filters.customerName")}
             value={filterCustomer}
             onChange={(event) => setFilterCustomer(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") onApplyFilters();
+            }}
           />
           <Select value={filterStatus} onChange={(event) => setFilterStatus(event.target.value)}>
             <option value="">{t("filters.allStatus")}</option>
@@ -307,18 +341,28 @@ export default function AdminDrawingsPage() {
                     {t("pagination.total", { count: pagination.total })} ·{" "}
                     {t("pagination.page", { page: pagination.page, totalPages: pagination.totalPages })}
                   </p>
-                  <div className="flex gap-2">
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-zinc-500">{t("pagination.pageSize")}</span>
+                      <Select value={filterPageSize} onChange={(event) => onPageSizeChange(event.target.value)}>
+                        {PAGE_SIZE_OPTIONS.map((option) => (
+                          <option key={option} value={option}>
+                            {option}
+                          </option>
+                        ))}
+                      </Select>
+                    </div>
                     <Button
                       variant="outline"
                       onClick={() => onPageChange(pagination.page - 1)}
-                      disabled={pagination.page <= 1}
+                      disabled={loading || pagination.page <= 1}
                     >
                       {t("pagination.prev")}
                     </Button>
                     <Button
                       variant="outline"
                       onClick={() => onPageChange(pagination.page + 1)}
-                      disabled={pagination.page >= pagination.totalPages}
+                      disabled={loading || pagination.page >= pagination.totalPages}
                     >
                       {t("pagination.next")}
                     </Button>

@@ -59,6 +59,7 @@
     "pagination": {
       "total": "Total {count}",
       "page": "Page {page}/{totalPages}",
+      "pageSize": "Per page",
       "prev": "Previous",
       "next": "Next"
     },
