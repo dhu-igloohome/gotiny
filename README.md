@@ -1,36 +1,53 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# GoTiny
 
-## Getting Started
+Minimal manufacturing SaaS based on Next.js App Router + Prisma + PostgreSQL.
 
-First, run the development server:
+## Local Development
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open `http://localhost:3000`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Production Deployment Rule (Important)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+To avoid env mismatch and login failures, keep **only one active Vercel project** for this repository.
 
-## Learn More
+- Canonical project name: `gotiny` (recommended)
+- Other projects (`gotinymes`, `letsgotiny`) should be archived or disconnected from this repo
+- `main` branch production deploy must come from the canonical project only
 
-To learn more about Next.js, take a look at the following resources:
+## Required Environment Variables
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Set these in the canonical Vercel project:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- `DATABASE_URL`
+- `JWT_SECRET`
 
-## Deploy on Vercel
+## Runtime Health Check
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+After each production deployment, open:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `/api/health/runtime`
+
+Expected result:
+
+- `checks.hasDatabaseUrl = true`
+- `runtime.vercelProjectId` and `runtime.vercelUrl` match the project/domain you are visiting
+
+If `hasDatabaseUrl` is false, login may return `Login service unavailable`.
+
+## Vercel Project Consolidation Checklist
+
+1. Pick one canonical project (recommend: `gotiny`)
+2. In canonical project:
+   - configure env vars (`DATABASE_URL`, `JWT_SECRET`)
+   - redeploy latest `main`
+3. In non-canonical projects:
+   - remove production domain bindings
+   - archive project or unlink repo integration
+4. Verify canonical production domain:
+   - `/api/health/runtime` is healthy
+   - login with `david / david123` succeeds
