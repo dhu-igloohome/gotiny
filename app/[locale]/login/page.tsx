@@ -21,6 +21,20 @@ export default function LoginPage() {
   const target =
     method === "phone" ? phone.trim() : method === "email" ? email.trim() : account.trim();
 
+  function mapPasswordLoginError(raw?: string) {
+    if (!raw) return "登录失败";
+    if (raw === "Server database is not configured.") {
+      return "服务端未配置数据库，请检查部署环境变量（DATABASE_URL）。";
+    }
+    if (raw === "Login service unavailable.") {
+      return "登录服务暂时不可用，请稍后重试或联系管理员检查 /api/health/runtime。";
+    }
+    if (raw === "Invalid account or password.") {
+      return "账号或密码错误（提示：演示账号为 david / david123）。";
+    }
+    return raw;
+  }
+
   async function handleSendCode() {
     if (method === "password") {
       setError("账号密码登录不需要发送验证码");
@@ -103,7 +117,7 @@ export default function LoginPage() {
           user?: { role?: "OWNER" | "ADMIN" | "WORKER" | "OBSERVER" | "QC" | "OUTSOURCE" };
         };
         if (!response.ok) {
-          setError(data.error ?? "登录失败");
+          setError(mapPasswordLoginError(data.error));
           return;
         }
         const isAdmin = data.user?.role === "OWNER" || data.user?.role === "ADMIN";
