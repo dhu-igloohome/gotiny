@@ -1,16 +1,17 @@
 import { NextResponse } from "next/server";
 
 function maskConnectionString(value: string | undefined): string {
-  if (!value) return "missing";
-  if (value.length <= 20) return "***";
-  return `${value.slice(0, 12)}...${value.slice(-8)}`;
+  const normalized = value?.trim();
+  if (!normalized) return "missing";
+  if (normalized.length <= 20) return "***";
+  return `${normalized.slice(0, 12)}...${normalized.slice(-8)}`;
 }
 
 export async function GET() {
   const payload = {
     ok: true,
     checks: {
-      hasDatabaseUrl: Boolean(process.env.DATABASE_URL),
+      hasDatabaseUrl: Boolean(process.env.DATABASE_URL?.trim()),
       hasJwtSecret: Boolean(process.env.JWT_SECRET),
     },
     runtime: {

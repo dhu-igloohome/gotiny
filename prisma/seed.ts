@@ -4,7 +4,7 @@ import { PrismaClient } from "../lib/generated/prisma/client";
 import { hashPassword } from "../lib/auth/password";
 
 async function main() {
-  const connectionString = process.env.DATABASE_URL;
+  const connectionString = process.env.DATABASE_URL?.trim();
   if (!connectionString) {
     throw new Error("DATABASE_URL is required for seed.");
   }
