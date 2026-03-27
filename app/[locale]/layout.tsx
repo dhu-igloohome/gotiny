@@ -8,11 +8,16 @@ type LocaleLayoutProps = {
 };
 
 async function getMessages(locale: Locale) {
-  if (locale === "zh") {
-    return (await import("@/messages/zh.json")).default;
-  }
+  try {
+    if (locale === "zh") {
+      return (await import("@/messages/zh.json")).default;
+    }
 
-  return (await import("@/messages/en.json")).default;
+    return (await import("@/messages/en.json")).default;
+  } catch {
+    // Fail-safe for production: never crash locale pages because of i18n loading.
+    return {};
+  }
 }
 
 export default async function LocaleLayout({ children, params }: LocaleLayoutProps) {
