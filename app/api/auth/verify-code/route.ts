@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { normalizeTarget, verifyOtp } from "@/lib/auth/otp-store";
 import { issueDevSessionToken } from "@/lib/auth/session";
-import { prisma } from "@/lib/prisma";
+import { getPrismaClient } from "@/lib/prisma";
 
 type VerifyCodePayload = {
   method?: "phone" | "email";
@@ -31,6 +31,8 @@ export async function POST(request: Request) {
   if (result === "invalid") {
     return NextResponse.json({ error: "Invalid code." }, { status: 400 });
   }
+
+  const prisma = getPrismaClient();
 
   const user =
     body.method === "phone"
