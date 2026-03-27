@@ -12,6 +12,11 @@ type DashboardStats = {
   goodRatePercent: number;
   scrapRatePercent: number;
   inProgressDrawingCount: number;
+  productionTrend?: Array<{
+    date: string;
+    goodQty: number;
+    scrapQty: number;
+  }>;
 };
 
 export default function AdminHomePage() {
@@ -70,6 +75,27 @@ export default function AdminHomePage() {
             </Card>
           ))}
         </div>
+
+        <Card className="border-zinc-200">
+          <CardHeader>
+            <CardTitle className="text-sm text-zinc-500">近7天产出趋势</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-7 gap-2">
+              {(stats.productionTrend ?? []).map((item) => {
+                const height = Math.max(8, Math.min(80, item.goodQty / 2));
+                return (
+                  <div key={item.date} className="flex flex-col items-center gap-2">
+                    <div className="flex h-24 w-full items-end justify-center rounded bg-zinc-100">
+                      <div className="w-5 rounded-t bg-zinc-900" style={{ height }} />
+                    </div>
+                    <p className="text-[10px] text-zinc-500">{item.date.slice(5)}</p>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
       </section>
     </main>
   );

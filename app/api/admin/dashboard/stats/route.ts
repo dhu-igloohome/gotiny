@@ -15,7 +15,11 @@ export async function GET() {
 
   const { prisma, organizationId } = getScopedPrisma(context.organizationId);
 
-  const [drawingAgg, drawingDemandFallbackAgg, stateAgg] = await Promise.all([
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
+  sevenDaysAgo.setHours(0, 0, 0, 0);
+
+  const [drawingAgg, drawingDemandFallbackAgg, stateAgg, recentEvents] = await Promise.all([
     prisma.drawing.aggregate({
       where: { organizationId },
       _count: { _all: true },
@@ -30,6 +34,20 @@ export async function GET() {
       _sum: {
         acceptedGoodQty: true,
         scrapQty: true,
+      },
+    }),
+    prisma.reportEvent.findMany({
+      where: {
+        organizationId,
+        occurredAt: { gte: sevenDaysAgo },
+      },
+      select: {
+        occurredAt: true,
+        acceptedGoodQty: true,
+        acceptedScrapQty: true,
+      },
+      orderBy: {
+        occurredAt: "asc",
       },
     }),
   ]);
@@ -50,6 +68,22 @@ export async function GET() {
   const goodRate = totalPlannedQty > 0 ? Number(((totalGoodQty / totalPlannedQty) * 100).toFixed(2)) : 0;
   const scrapRate = totalPlannedQty > 0 ? Number(((totalScrapQty / totalPlannedQty) * 100).toFixed(2)) : 0;
 
+  const trendMap = new Map<string, { date: string; goodQty: number; scrapQty: number }>();
+  for (let i = 0; i < 7; i += 1) {
+    const day = new Date(sevenDaysAgo);
+    day.setDate(day.getDate() + i);
+    const date = day.toISOString().slice(0, 10);
+    trendMap.set(date, { date, goodQty: 0, scrapQty: 0 });
+  }
+  for (const event of recentEvents) {
+    const date = event.occurredAt.toISOString().slice(0, 10);
+    const bucket = trendMap.get(date);
+    if (!bucket) continue;
+    bucket.goodQty += event.acceptedGoodQty;
+    bucket.scrapQty += event.acceptedScrapQty;
+  }
+  const productionTrend = Array.from(trendMap.values());
+
   return NextResponse.json({
     ok: true,
     stats: {
@@ -61,6 +95,7 @@ export async function GET() {
       progressPercent: progress,
       goodRatePercent: goodRate,
       scrapRatePercent: scrapRate,
+      productionTrend,
     },
   });
 }

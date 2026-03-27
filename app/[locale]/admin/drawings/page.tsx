@@ -128,7 +128,7 @@ export default function AdminDrawingsPage() {
           </Button>
         </div>
 
-        <div className="grid gap-3 rounded-xl border border-zinc-200 bg-zinc-50 p-4 sm:grid-cols-3">
+        <div className="sticky top-4 z-10 grid gap-3 rounded-xl border border-zinc-200 bg-zinc-50 p-4 shadow-sm sm:grid-cols-3">
           <Input
             placeholder={t("filters.drawingNo")}
             value={filterDrawingNo}

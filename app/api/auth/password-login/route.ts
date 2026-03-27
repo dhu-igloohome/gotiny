@@ -3,11 +3,6 @@ import { verifyPassword } from "@/lib/auth/password";
 import { getSessionCookieMaxAge, SESSION_COOKIE_NAME, signSessionToken } from "@/lib/auth/session";
 import { getPrismaClient } from "@/lib/prisma";
 
-const DEMO_ADMIN_ACCOUNT = "david";
-const DEMO_ADMIN_PASSWORD = "david123";
-const DEMO_ORG_ID = "cmn8f7tkg0001kktpxe9gmffy";
-const DEMO_USER_ID = "demo-david";
-
 type PasswordLoginPayload = {
   account?: string;
   password?: string;
@@ -21,9 +16,6 @@ export async function POST(request: Request) {
   if (!account || !password) {
     return NextResponse.json({ error: "Account and password are required." }, { status: 400 });
   }
-
-  const isDemoCredential =
-    account.toLowerCase() === DEMO_ADMIN_ACCOUNT && password === DEMO_ADMIN_PASSWORD;
 
   try {
     const prisma = getPrismaClient();
@@ -68,35 +60,6 @@ export async function POST(request: Request) {
 
     return response;
   } catch {
-    if (!isDemoCredential) {
-      return NextResponse.json({ error: "Invalid account or password." }, { status: 401 });
-    }
-
-    const sessionToken = await signSessionToken({
-      sub: DEMO_USER_ID,
-      orgId: DEMO_ORG_ID,
-      role: "OWNER",
-      email: DEMO_ADMIN_ACCOUNT,
-      locale: "zh",
-    });
-
-    const response = NextResponse.json({
-      ok: true,
-      message: "Login success (demo fallback).",
-      user: {
-        id: DEMO_USER_ID,
-        role: "OWNER",
-      },
-    });
-
-    response.cookies.set(SESSION_COOKIE_NAME, sessionToken, {
-      httpOnly: true,
-      sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
-      path: "/",
-      maxAge: getSessionCookieMaxAge(),
-    });
-
-    return response;
+    return NextResponse.json({ error: "Login service unavailable." }, { status: 503 });
   }
 }
