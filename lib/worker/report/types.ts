@@ -3,6 +3,7 @@ export type SubmitWorkerReportInput = {
   goodQty: number;
   scrapQty: number;
   idempotencyKey: string;
+  photoUrls?: string[];
   actorUserId?: string;
   expectedLockVersion?: number;
 };

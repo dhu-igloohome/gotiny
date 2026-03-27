@@ -11,6 +11,9 @@ export class WorkerReportService extends BaseService {
     const idempotencyKey = input.idempotencyKey.trim();
     const goodQty = Number(input.goodQty);
     const scrapQty = Number(input.scrapQty);
+    const photoUrls = (input.photoUrls ?? [])
+      .map((item) => item.trim())
+      .filter((item) => item.length > 0);
     const expectedLockVersion =
       input.expectedLockVersion === undefined ? undefined : Number(input.expectedLockVersion);
 
@@ -28,6 +31,9 @@ export class WorkerReportService extends BaseService {
       (!Number.isInteger(expectedLockVersion) || expectedLockVersion < 0)
     ) {
       throw new ValidationError("expectedLockVersion must be a non-negative integer.");
+    }
+    if (photoUrls.some((item) => !/^https?:\/\//i.test(item))) {
+      throw new ValidationError("photoUrls must be valid http/https links.");
     }
 
     return this.scoped.prisma.$transaction(async (tx) => {
@@ -148,6 +154,7 @@ export class WorkerReportService extends BaseService {
             planQty,
             inspectionMode: operation.inspectionMode,
             operationStatus: nextStatus,
+            photoUrls,
           },
         },
       });

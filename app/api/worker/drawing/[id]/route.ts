@@ -3,6 +3,7 @@ import { canAccessWorker } from "@/lib/auth/rbac";
 import { getRequestContext } from "@/lib/auth/request-context";
 import type { AuthRole } from "@/lib/auth/session";
 import { getScopedPrisma } from "@/lib/core/scoped-prisma";
+import { listAuthorizedUserIds } from "@/lib/worker/operation-authorizations";
 
 type RouteParams = {
   params: Promise<{ id: string }>;
@@ -13,15 +14,19 @@ export async function GET(_: Request, { params }: RouteParams) {
   if (!context.organizationId) {
     return NextResponse.json({ error: "Unauthorized organization context." }, { status: 401 });
   }
-  if (!canAccessWorker(context.role as AuthRole | undefined)) {
+  const role = context.role as AuthRole | undefined;
+  if (!canAccessWorker(role)) {
     return NextResponse.json({ error: "Worker role required." }, { status: 403 });
   }
 
-  const { id } = await params;
+  const rawId = (await params).id.trim();
   const { prisma, organizationId } = getScopedPrisma(context.organizationId);
 
   const drawing = await prisma.drawing.findFirst({
-    where: { id, organizationId },
+    where: {
+      organizationId,
+      OR: [{ id: rawId }, { drawingNo: rawId }, { qrCode: rawId }],
+    },
     include: {
       operations: {
         include: { state: true },
@@ -38,13 +43,23 @@ export async function GET(_: Request, { params }: RouteParams) {
     drawing.operations.find((op) => op.status !== "COMPLETED") ??
     drawing.operations[drawing.operations.length - 1] ??
     null;
+  const authorizedUserIds = currentOperation
+    ? await listAuthorizedUserIds(organizationId, currentOperation.id)
+    : [];
+  const hasOperationAuthorization = !!context.userId && authorizedUserIds.includes(context.userId);
+  const canReportCurrentOperation =
+    !!currentOperation &&
+    (role === "OWNER" || role === "ADMIN" ? true : hasOperationAuthorization);
 
   const payload = {
     id: drawing.id,
+    qrCode: drawing.qrCode,
     drawingNo: drawing.drawingNo,
     demandQty: drawing.demandQty,
     plannedQty: drawing.plannedQty ?? drawing.demandQty,
     status: drawing.status,
+    canReportCurrentOperation,
+    authorizedWorkerCount: authorizedUserIds.length,
     currentOperation: currentOperation
       ? {
           id: currentOperation.id,
@@ -56,6 +71,7 @@ export async function GET(_: Request, { params }: RouteParams) {
           reportedQty: currentOperation.state?.reportedQty ?? 0,
           goodQty: currentOperation.state?.acceptedGoodQty ?? 0,
           scrapQty: currentOperation.state?.scrapQty ?? 0,
+          inspectionMode: currentOperation.inspectionMode,
           maxGoodCanReport: Math.max(
             0,
             (currentOperation.planQty ?? drawing.demandQty) - (currentOperation.state?.acceptedGoodQty ?? 0),

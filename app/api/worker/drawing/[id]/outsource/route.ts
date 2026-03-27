@@ -3,6 +3,7 @@ import { canAccessWorker } from "@/lib/auth/rbac";
 import { getRequestContext } from "@/lib/auth/request-context";
 import type { AuthRole } from "@/lib/auth/session";
 import { getScopedPrisma } from "@/lib/core/scoped-prisma";
+import { listAuthorizedUserIds } from "@/lib/worker/operation-authorizations";
 
 type RouteParams = {
   params: Promise<{ id: string }>;
@@ -14,7 +15,7 @@ type OutsourcePayload = {
 
 export async function POST(request: Request, { params }: RouteParams) {
   const context = await getRequestContext();
-  if (!context.organizationId) {
+  if (!context.organizationId || !context.userId) {
     return NextResponse.json({ error: "Unauthorized organization context." }, { status: 401 });
   }
   if (!canAccessWorker(context.role as AuthRole | undefined)) {
@@ -47,6 +48,11 @@ export async function POST(request: Request, { params }: RouteParams) {
     null;
   if (!currentOperation) {
     return NextResponse.json({ error: "No operation found for drawing." }, { status: 400 });
+  }
+  const authorizedUserIds = await listAuthorizedUserIds(organizationId, currentOperation.id);
+  const isPrivileged = context.role === "OWNER" || context.role === "ADMIN";
+  if (!isPrivileged && !authorizedUserIds.includes(context.userId)) {
+    return NextResponse.json({ error: "You are not authorized for this operation." }, { status: 403 });
   }
 
   if (action === "SEND" && drawing.status === "OUTSOURCING") {

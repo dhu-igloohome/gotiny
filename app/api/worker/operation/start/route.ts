@@ -3,6 +3,7 @@ import { canAccessWorker } from "@/lib/auth/rbac";
 import { getRequestContext } from "@/lib/auth/request-context";
 import type { AuthRole } from "@/lib/auth/session";
 import { getScopedPrisma } from "@/lib/core/scoped-prisma";
+import { listAuthorizedUserIds } from "@/lib/worker/operation-authorizations";
 
 type StartPayload = {
   operationId?: string;
@@ -10,7 +11,7 @@ type StartPayload = {
 
 export async function POST(request: Request) {
   const context = await getRequestContext();
-  if (!context.organizationId) {
+  if (!context.organizationId || !context.userId) {
     return NextResponse.json({ error: "Unauthorized organization context." }, { status: 401 });
   }
   if (!canAccessWorker(context.role as AuthRole | undefined)) {
@@ -30,6 +31,11 @@ export async function POST(request: Request) {
   });
   if (!operation) {
     return NextResponse.json({ error: "Operation not found." }, { status: 404 });
+  }
+  const authorizedUserIds = await listAuthorizedUserIds(organizationId, operation.id);
+  const isPrivileged = context.role === "OWNER" || context.role === "ADMIN";
+  if (!isPrivileged && !authorizedUserIds.includes(context.userId)) {
+    return NextResponse.json({ error: "You are not authorized for this operation." }, { status: 403 });
   }
 
   if (operation.status === "COMPLETED") {
