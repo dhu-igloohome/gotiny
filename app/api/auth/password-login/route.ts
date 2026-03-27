@@ -17,6 +17,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Account and password are required." }, { status: 400 });
   }
 
+  if (!process.env.DATABASE_URL) {
+    return NextResponse.json({ error: "Server database is not configured." }, { status: 500 });
+  }
+
   try {
     const prisma = getPrismaClient();
     const user =
@@ -59,7 +63,8 @@ export async function POST(request: Request) {
     });
 
     return response;
-  } catch {
+  } catch (error) {
+    console.error("[password-login] unexpected error", error);
     return NextResponse.json({ error: "Login service unavailable." }, { status: 503 });
   }
 }
