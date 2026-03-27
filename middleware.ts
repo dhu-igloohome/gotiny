@@ -7,6 +7,7 @@ function isPublicPath(pathname: string): boolean {
   if (pathname === "/test-report") return true;
   if (pathname.startsWith("/api/auth/send-code")) return true;
   if (pathname.startsWith("/api/auth/verify-code")) return true;
+  if (pathname.startsWith("/api/auth/password-login")) return true;
   if (pathname.startsWith("/api/test-debug/")) return true;
   if (/^\/(zh|en)\/login$/.test(pathname)) return true;
   return false;
