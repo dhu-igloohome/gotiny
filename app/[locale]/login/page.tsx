@@ -3,22 +3,31 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-type AuthMethod = "phone" | "email";
+type AuthMethod = "phone" | "email" | "password";
 
 export default function LoginPage() {
   const router = useRouter();
   const [method, setMethod] = useState<AuthMethod>("phone");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
+  const [account, setAccount] = useState("");
+  const [password, setPassword] = useState("");
   const [code, setCode] = useState("");
   const [sending, setSending] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
-  const target = method === "phone" ? phone.trim() : email.trim();
+  const target =
+    method === "phone" ? phone.trim() : method === "email" ? email.trim() : account.trim();
 
   async function handleSendCode() {
+    if (method === "password") {
+      setError("账号密码登录不需要发送验证码");
+      setMessage("");
+      return;
+    }
+
     if (!target) {
       setError(method === "phone" ? "请先输入手机号" : "请先输入邮箱");
       setMessage("");
@@ -67,6 +76,43 @@ export default function LoginPage() {
     if (!target) {
       setError(method === "phone" ? "请先输入手机号" : "请先输入邮箱");
       setMessage("");
+      return;
+    }
+
+    if (method === "password") {
+      if (!password.trim()) {
+        setError("请输入密码");
+        setMessage("");
+        return;
+      }
+
+      setSubmitting(true);
+      setError("");
+      setMessage("");
+      try {
+        const response = await fetch("/api/auth/password-login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ account: target, password: password.trim() }),
+        });
+        const data = (await response.json()) as {
+          error?: string;
+          message?: string;
+          user?: { role?: "OWNER" | "ADMIN" | "WORKER" | "OBSERVER" | "QC" | "OUTSOURCE" };
+        };
+        if (!response.ok) {
+          setError(data.error ?? "登录失败");
+          return;
+        }
+        const isAdmin = data.user?.role === "OWNER" || data.user?.role === "ADMIN";
+        setMessage(data.message ?? "登录成功");
+        router.push(isAdmin ? "/zh/admin" : "/zh/worker");
+        router.refresh();
+      } catch {
+        setError("网络异常，请检查后重试");
+      } finally {
+        setSubmitting(false);
+      }
       return;
     }
 
@@ -125,7 +171,7 @@ export default function LoginPage() {
           <p className="text-sm text-zinc-500">访客可任选手机号或邮箱验证码进行注册/登录</p>
         </div>
 
-        <div className="mt-6 grid grid-cols-2 rounded-xl bg-zinc-100 p-1">
+        <div className="mt-6 grid grid-cols-3 rounded-xl bg-zinc-100 p-1">
           <button
             type="button"
             onClick={() => {
@@ -156,6 +202,21 @@ export default function LoginPage() {
           >
             邮箱 + 验证码
           </button>
+          <button
+            type="button"
+            onClick={() => {
+              setMethod("password");
+              setError("");
+              setMessage("");
+            }}
+            className={`rounded-lg px-3 py-2 text-sm font-medium transition ${
+              method === "password"
+                ? "bg-white text-zinc-900 shadow-sm"
+                : "text-zinc-500 hover:text-zinc-700"
+            }`}
+          >
+            账号 + 密码
+          </button>
         </div>
 
         <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
@@ -174,7 +235,7 @@ export default function LoginPage() {
                 className="w-full rounded-xl border border-zinc-300 px-4 py-2.5 text-sm outline-none ring-0 transition focus:border-zinc-400"
               />
             </div>
-          ) : (
+          ) : method === "email" ? (
             <div className="space-y-2">
               <label htmlFor="email" className="block text-sm font-medium text-zinc-700">
                 邮箱
@@ -189,9 +250,41 @@ export default function LoginPage() {
                 className="w-full rounded-xl border border-zinc-300 px-4 py-2.5 text-sm outline-none ring-0 transition focus:border-zinc-400"
               />
             </div>
+          ) : (
+            <>
+              <div className="space-y-2">
+                <label htmlFor="account" className="block text-sm font-medium text-zinc-700">
+                  账号
+                </label>
+                <input
+                  id="account"
+                  name="account"
+                  type="text"
+                  placeholder="请输入账号（david）"
+                  value={account}
+                  onChange={(event) => setAccount(event.target.value)}
+                  className="w-full rounded-xl border border-zinc-300 px-4 py-2.5 text-sm outline-none ring-0 transition focus:border-zinc-400"
+                />
+              </div>
+              <div className="space-y-2">
+                <label htmlFor="password" className="block text-sm font-medium text-zinc-700">
+                  密码
+                </label>
+                <input
+                  id="password"
+                  name="password"
+                  type="password"
+                  placeholder="请输入密码"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  className="w-full rounded-xl border border-zinc-300 px-4 py-2.5 text-sm outline-none ring-0 transition focus:border-zinc-400"
+                />
+              </div>
+            </>
           )}
 
-          <div className="space-y-2">
+          {method !== "password" ? (
+            <div className="space-y-2">
             <label htmlFor="code" className="block text-sm font-medium text-zinc-700">
               验证码
             </label>
@@ -214,7 +307,8 @@ export default function LoginPage() {
                 {sending ? "发送中..." : "发送验证码"}
               </button>
             </div>
-          </div>
+            </div>
+          ) : null}
 
           {error ? <p className="text-sm text-red-600">{error}</p> : null}
           {message ? <p className="text-sm text-emerald-600">{message}</p> : null}

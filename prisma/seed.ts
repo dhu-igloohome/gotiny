@@ -1,6 +1,7 @@
 import "dotenv/config";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../lib/generated/prisma/client";
+import { hashPassword } from "../lib/auth/password";
 
 async function main() {
   const connectionString = process.env.DATABASE_URL;
@@ -13,6 +14,8 @@ async function main() {
   });
 
   const phone = "13800138000";
+  const adminAccount = "david";
+  const adminPassword = "david123";
   const orgName = "Gotiny 演示工厂";
   const drawingNo = "轴承端盖 A2-2026";
   const qrCode = "GOTINY-DEMO-A2-2026";
@@ -48,6 +51,50 @@ async function main() {
       data: {
         organizationId: organization.id,
         userId: user.id,
+        role: "OWNER",
+        isDefault: true,
+      },
+    });
+  }
+
+  const adminUser =
+    (await prisma.user.findFirst({ where: { email: adminAccount } })) ??
+    (await prisma.user.create({
+      data: {
+        email: adminAccount,
+        passwordHash: hashPassword(adminPassword),
+        preferredLocale: "zh",
+      },
+    }));
+
+  await prisma.user.update({
+    where: { id: adminUser.id },
+    data: {
+      passwordHash: hashPassword(adminPassword),
+      preferredLocale: "zh",
+    },
+  });
+
+  const adminMember = await prisma.organizationUser.findFirst({
+    where: {
+      organizationId: organization.id,
+      userId: adminUser.id,
+    },
+  });
+
+  if (!adminMember) {
+    await prisma.organizationUser.create({
+      data: {
+        organizationId: organization.id,
+        userId: adminUser.id,
+        role: "OWNER",
+        isDefault: true,
+      },
+    });
+  } else if (adminMember.role !== "OWNER" || !adminMember.isDefault) {
+    await prisma.organizationUser.update({
+      where: { id: adminMember.id },
+      data: {
         role: "OWNER",
         isDefault: true,
       },
