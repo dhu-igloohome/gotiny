@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 type AuthMethod = "phone" | "email";
 
 export default function LoginPage() {
+  const router = useRouter();
   const [method, setMethod] = useState<AuthMethod>("phone");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
@@ -95,8 +97,7 @@ export default function LoginPage() {
       const authData = data as {
         error?: string;
         message?: string;
-        session?: { token?: string };
-        user?: { role?: "ADMIN" | "WORKER" };
+        user?: { role?: "OWNER" | "ADMIN" | "WORKER" | "OBSERVER" | "QC" | "OUTSOURCE" };
       };
 
       if (!response.ok) {
@@ -104,12 +105,11 @@ export default function LoginPage() {
         return;
       }
 
-      if (authData.session?.token) {
-        localStorage.setItem("gotiny:session_token", authData.session.token);
-      }
-
-      const roleText = authData.user?.role === "ADMIN" ? "管理员" : "工人";
+      const isAdmin = authData.user?.role === "OWNER" || authData.user?.role === "ADMIN";
+      const roleText = isAdmin ? "管理员" : "工人";
       setMessage(`${authData.message ?? "验证码校验成功"}，当前身份：${roleText}`);
+      router.push(isAdmin ? "/zh/admin" : "/zh/worker");
+      router.refresh();
     } catch {
       setError("网络异常，请检查后重试");
     } finally {

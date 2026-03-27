@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { normalizeTarget, verifyOtp } from "@/lib/auth/otp-store";
-import { issueDevSessionToken } from "@/lib/auth/session";
+import { getSessionCookieMaxAge, SESSION_COOKIE_NAME, signSessionToken } from "@/lib/auth/session";
 import { getPrismaClient } from "@/lib/prisma";
 
 type VerifyCodePayload = {
@@ -47,9 +47,20 @@ export async function POST(request: Request) {
           update: {},
         });
 
-  const sessionToken = issueDevSessionToken(user.id);
+  const defaultMembership = await prisma.organizationUser.findFirst({
+    where: { userId: user.id },
+    orderBy: [{ isDefault: "desc" }, { createdAt: "asc" }],
+  });
 
-  return NextResponse.json(
+  const sessionToken = await signSessionToken({
+    sub: user.id,
+    orgId: defaultMembership?.organizationId,
+    role: defaultMembership?.role,
+    phone: user.phone,
+    email: user.email,
+    locale: user.preferredLocale,
+  });
+  const response = NextResponse.json(
     {
       ok: true,
       message: "Code verified.",
@@ -57,15 +68,24 @@ export async function POST(request: Request) {
       target,
       user: {
         id: user.id,
-        role: user.role,
+        role: defaultMembership?.role ?? null,
         phone: user.phone,
         email: user.email,
       },
       session: {
-        token: sessionToken,
-        tokenType: "Bearer",
+        tokenType: "Cookie",
       },
     },
     { status: 200 },
   );
+
+  response.cookies.set(SESSION_COOKIE_NAME, sessionToken, {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: getSessionCookieMaxAge(),
+  });
+
+  return response;
 }

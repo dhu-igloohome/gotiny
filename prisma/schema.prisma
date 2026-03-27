@@ -12,44 +12,269 @@ datasource db {
   provider = "postgresql"
 }
 
-enum UserRole {
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum OrganizationStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+enum OrganizationRole {
+  OWNER
   ADMIN
   WORKER
+  OBSERVER
+  QC
+  OUTSOURCE
+}
+
+enum DrawingStatus {
+  DRAFT
+  IN_PRODUCTION
+  OUTSOURCING
+  COMPLETED
+  CANCELLED
+}
+
+enum DependencyMode {
+  MUST_COMPLETE
+  ANY_COMPLETE
+  ALL_COMPLETE
+  SHARED_QUANTITY
+}
+
+enum OperationStatus {
+  READY
+  IN_PROGRESS
+  WAITING_QC
+  OUTSOURCING
+  COMPLETED
+  BLOCKED
+}
+
+enum InspectionMode {
+  SELF_CHECK
+  DEDICATED_QC
+}
+
+enum EventSource {
+  WEB
+  MOBILE
+  OFFLINE_SYNC
+  SYSTEM
+  API
+}
+
+enum ReportEventType {
+  REPORT_SUBMITTED
+  SCRAP_RECORDED
+  QC_APPROVED
+  QC_REJECTED
+  OUTSOURCE_SENT
+  OUTSOURCE_RECEIVED
+  ADJUSTMENT
+}
+
+enum OutsourceOrderStatus {
+  PENDING
+  IN_PROGRESS
+  TRANSFERRED
+  RETURNED
+  CANCELLED
 }
 
 model User {
-  id            String             @id @default(cuid())
-  phone         String?            @unique
-  email         String?            @unique
-  role          UserRole           @default(WORKER)
-  organizations OrganizationUser[]
-  createdAt     DateTime           @default(now())
-  updatedAt     DateTime           @updatedAt
+  id                 String             @id @default(cuid())
+  phone              String?            @unique
+  email              String?            @unique
+  passwordHash       String?            @map("password_hash")
+  preferredLocale    String             @default("zh") @map("preferred_locale")
+  status             UserStatus         @default(ACTIVE)
+  organizationLinks  OrganizationUser[]
+  createdAt          DateTime           @default(now()) @map("created_at")
+  updatedAt          DateTime           @updatedAt @map("updated_at")
+  reportEvents       ReportEvent[]      @relation("ReportActor")
+  createdDrawings    Drawing[]          @relation("DrawingCreator")
+  createdOperations  Operation[]        @relation("OperationCreator")
+  createdOutsources  OutsourceOrder[]   @relation("OutsourceCreator")
 
   @@map("users")
 }
 
 model Organization {
-  id        String             @id @default(cuid())
-  name      String
-  users     OrganizationUser[]
-  createdAt DateTime           @default(now())
-  updatedAt DateTime           @updatedAt
+  id              String             @id @default(cuid())
+  name            String
+  industry        String?
+  status          OrganizationStatus @default(ACTIVE)
+  locale          String             @default("zh")
+  users           OrganizationUser[]
+  drawings        Drawing[]
+  operations      Operation[]
+  operationStates OperationState[]
+  reportEvents    ReportEvent[]
+  outsourceOrders OutsourceOrder[]
+  createdAt       DateTime           @default(now()) @map("created_at")
+  updatedAt       DateTime           @updatedAt @map("updated_at")
 
   @@map("organizations")
 }
 
 model OrganizationUser {
-  id             String       @id @default(cuid())
-  organizationId String       @map("organization_id")
-  userId         String       @map("user_id")
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  id             String           @id @default(cuid())
+  organizationId String           @map("organization_id")
+  userId         String           @map("user_id")
+  role           OrganizationRole
+  isDefault      Boolean          @default(false) @map("is_default")
+  createdAt      DateTime         @default(now()) @map("created_at")
+  updatedAt      DateTime         @updatedAt @map("updated_at")
+  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([organizationId, userId])
-  @@index([organizationId])
   @@index([userId])
+  @@index([organizationId, role])
   @@map("organization_users")
+}
+
+model Drawing {
+  id              String        @id @default(cuid())
+  organizationId  String        @map("organization_id")
+  drawingNo       String        @map("drawing_no")
+  customerName    String?       @map("customer_name")
+  demandQty       Int           @map("demand_qty")
+  plannedQty      Int?          @map("planned_qty")
+  dueAt           DateTime?     @map("due_at")
+  status          DrawingStatus @default(DRAFT)
+  qrCode          String        @unique @map("qr_code")
+  createdByUserId String?       @map("created_by_user_id")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+  organization    Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy       User?         @relation("DrawingCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  operations      Operation[]
+  reportEvents    ReportEvent[]
+  outsourceOrders OutsourceOrder[]
+
+  @@unique([organizationId, drawingNo])
+  @@index([organizationId, status])
+  @@index([organizationId, dueAt])
+  @@map("drawings")
+}
+
+model Operation {
+  id                   String          @id @default(cuid())
+  organizationId       String          @map("organization_id")
+  drawingId            String          @map("drawing_id")
+  name                 String
+  code                 String?
+  planQty              Int?            @map("plan_qty")
+  sequence             Int
+  dependencyMode       DependencyMode  @default(MUST_COMPLETE) @map("dependency_mode")
+  inspectionMode       InspectionMode  @default(SELF_CHECK) @map("inspection_mode")
+  isCritical           Boolean         @default(false) @map("is_critical")
+  status               OperationStatus @default(READY)
+  createdByUserId      String?         @map("created_by_user_id")
+  createdAt            DateTime        @default(now()) @map("created_at")
+  updatedAt            DateTime        @updatedAt @map("updated_at")
+  organization         Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  drawing              Drawing         @relation(fields: [drawingId], references: [id], onDelete: Cascade)
+  createdBy            User?           @relation("OperationCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  state                OperationState?
+  reportEvents         ReportEvent[]
+  sourceOutsourceOrder OutsourceOrder[] @relation("OutsourceSourceOperation")
+  targetOutsourceOrder OutsourceOrder[] @relation("OutsourceTargetOperation")
+
+  @@unique([drawingId, sequence])
+  @@index([organizationId, status])
+  @@index([organizationId, drawingId])
+  @@map("operations")
+}
+
+model OperationState {
+  id                    String       @id @default(cuid())
+  organizationId        String       @map("organization_id")
+  operationId           String       @unique @map("operation_id")
+  lockVersion           Int          @default(0) @map("lock_version")
+  inputAvailableQty     Int          @default(0) @map("input_available_qty")
+  reportedQty           Int          @default(0) @map("reported_qty")
+  acceptedGoodQty       Int          @default(0) @map("accepted_good_qty")
+  scrapQty              Int          @default(0) @map("scrap_qty")
+  downstreamScrapQty    Int          @default(0) @map("downstream_scrap_qty")
+  effectiveGoodQty      Int          @default(0) @map("effective_good_qty")
+  lastEventId           String?      @map("last_event_id")
+  updatedAt             DateTime     @updatedAt @map("updated_at")
+  organization          Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  operation             Operation    @relation(fields: [operationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([organizationId, lockVersion])
+  @@map("operation_states")
+}
+
+model ReportEvent {
+  id                       String          @id @default(cuid())
+  organizationId           String          @map("organization_id")
+  drawingId                String          @map("drawing_id")
+  operationId              String          @map("operation_id")
+  eventType                ReportEventType @map("event_type")
+  source                   EventSource     @default(WEB)
+  actorUserId              String?         @map("actor_user_id")
+  clientMutationId         String?         @map("client_mutation_id")
+  idempotencyKey           String?         @map("idempotency_key")
+  requestedQty             Int             @default(0) @map("requested_qty")
+  requestedGoodQty         Int             @default(0) @map("requested_good_qty")
+  requestedScrapQty        Int             @default(0) @map("requested_scrap_qty")
+  acceptedGoodQty          Int             @default(0) @map("accepted_good_qty")
+  acceptedScrapQty         Int             @default(0) @map("accepted_scrap_qty")
+  preLockVersion           Int             @default(0) @map("pre_lock_version")
+  postLockVersion          Int             @default(0) @map("post_lock_version")
+  operationEffectiveGood   Int             @default(0) @map("operation_effective_good")
+  operationScrapTotal      Int             @default(0) @map("operation_scrap_total")
+  metadata                 Json?
+  occurredAt               DateTime        @default(now()) @map("occurred_at")
+  organization             Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  drawing                  Drawing         @relation(fields: [drawingId], references: [id], onDelete: Cascade)
+  operation                Operation       @relation(fields: [operationId], references: [id], onDelete: Cascade)
+  actor                    User?           @relation("ReportActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@unique([organizationId, idempotencyKey])
+  @@unique([organizationId, clientMutationId])
+  @@index([organizationId, operationId, occurredAt])
+  @@index([organizationId, drawingId, occurredAt])
+  @@index([organizationId, eventType, occurredAt])
+  @@map("report_events")
+}
+
+model OutsourceOrder {
+  id                       String               @id @default(cuid())
+  organizationId           String               @map("organization_id")
+  drawingId                String               @map("drawing_id")
+  sourceOperationId        String               @map("source_operation_id")
+  targetOperationId        String?              @map("target_operation_id")
+  vendorOrganizationName   String               @map("vendor_organization_name")
+  status                   OutsourceOrderStatus @default(PENDING)
+  sendQty                  Int                  @map("send_qty")
+  returnedGoodQty          Int                  @default(0) @map("returned_good_qty")
+  scrapQty                 Int                  @default(0) @map("scrap_qty")
+  inheritedGoodQty         Int                  @default(0) @map("inherited_good_qty")
+  inheritedScrapQty        Int                  @default(0) @map("inherited_scrap_qty")
+  transferFromOrderId      String?              @map("transfer_from_order_id")
+  createdByUserId          String?              @map("created_by_user_id")
+  createdAt                DateTime             @default(now()) @map("created_at")
+  updatedAt                DateTime             @updatedAt @map("updated_at")
+  organization             Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  drawing                  Drawing              @relation(fields: [drawingId], references: [id], onDelete: Cascade)
+  sourceOperation          Operation            @relation("OutsourceSourceOperation", fields: [sourceOperationId], references: [id], onDelete: Cascade)
+  targetOperation          Operation?           @relation("OutsourceTargetOperation", fields: [targetOperationId], references: [id], onDelete: SetNull)
+  transferFromOrder        OutsourceOrder?      @relation("OutsourceTransferChain", fields: [transferFromOrderId], references: [id], onDelete: SetNull)
+  transferChildren         OutsourceOrder[]     @relation("OutsourceTransferChain")
+  createdBy                User?                @relation("OutsourceCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, drawingId])
+  @@index([organizationId, status])
+  @@index([transferFromOrderId])
+  @@map("outsource_orders")
 }
