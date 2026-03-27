@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { Filter, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -28,6 +29,13 @@ type ImportResult = {
   reason?: string;
 };
 
+type DrawingsPagination = {
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+};
+
 const SAMPLE_IMPORT_JSON = JSON.stringify(
   [
     {
@@ -47,6 +55,9 @@ const SAMPLE_IMPORT_JSON = JSON.stringify(
 export default function AdminDrawingsPage() {
   const t = useTranslations("drawings");
   const locale = useLocale();
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [drawings, setDrawings] = useState<DrawingRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [showImport, setShowImport] = useState(false);
@@ -57,15 +68,43 @@ export default function AdminDrawingsPage() {
   const [filterDrawingNo, setFilterDrawingNo] = useState("");
   const [filterCustomer, setFilterCustomer] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
+  const [pagination, setPagination] = useState<DrawingsPagination>({
+    page: 1,
+    pageSize: 10,
+    total: 0,
+    totalPages: 1,
+  });
 
   const isEmpty = useMemo(() => !loading && drawings.length === 0, [loading, drawings.length]);
 
+  useEffect(() => {
+    setFilterDrawingNo(searchParams.get("drawingNo") ?? "");
+    setFilterCustomer(searchParams.get("customer") ?? "");
+    setFilterStatus(searchParams.get("status") ?? "");
+  }, [searchParams]);
+
+  function updateQuery(next: { drawingNo?: string; customer?: string; status?: string; page?: string }) {
+    const query = new URLSearchParams(searchParams.toString());
+    const assign = (key: string, value?: string) => {
+      if (!value || !value.trim()) {
+        query.delete(key);
+        return;
+      }
+      query.set(key, value.trim());
+    };
+    assign("drawingNo", next.drawingNo);
+    assign("customer", next.customer);
+    assign("status", next.status);
+    assign("page", next.page);
+    query.set("pageSize", "10");
+    router.replace(`${pathname}?${query.toString()}`);
+  }
+
   const loadDrawings = useCallback(async () => {
     setLoading(true);
-    const query = new URLSearchParams();
-    if (filterDrawingNo.trim()) query.set("drawingNo", filterDrawingNo.trim());
-    if (filterCustomer.trim()) query.set("customer", filterCustomer.trim());
-    if (filterStatus) query.set("status", filterStatus);
+    const query = new URLSearchParams(searchParams.toString());
+    if (!query.get("page")) query.set("page", "1");
+    if (!query.get("pageSize")) query.set("pageSize", "10");
     const response = await fetch(`/api/admin/drawings?${query.toString()}`, { cache: "no-store" }).catch(
       () => null,
     );
@@ -74,14 +113,70 @@ export default function AdminDrawingsPage() {
       setLoading(false);
       return;
     }
-    const data = (await response.json()) as { drawings?: DrawingRow[] };
+    const data = (await response.json()) as { drawings?: DrawingRow[]; pagination?: DrawingsPagination };
     setDrawings(data.drawings ?? []);
+    setPagination(
+      data.pagination ?? {
+        page: 1,
+        pageSize: 10,
+        total: 0,
+        totalPages: 1,
+      },
+    );
     setLoading(false);
-  }, [filterCustomer, filterDrawingNo, filterStatus, t]);
+  }, [searchParams, t]);
 
   useEffect(() => {
     void loadDrawings();
   }, [loadDrawings]);
+
+  function onApplyFilters() {
+    updateQuery({
+      drawingNo: filterDrawingNo,
+      customer: filterCustomer,
+      status: filterStatus,
+      page: "1",
+    });
+  }
+
+  function onResetFilters() {
+    setFilterDrawingNo("");
+    setFilterCustomer("");
+    setFilterStatus("");
+    updateQuery({
+      drawingNo: "",
+      customer: "",
+      status: "",
+      page: "1",
+    });
+  }
+
+  function onPageChange(nextPage: number) {
+    const safePage = Math.max(1, Math.min(nextPage, pagination.totalPages || 1));
+    updateQuery({
+      drawingNo: filterDrawingNo,
+      customer: filterCustomer,
+      status: filterStatus,
+      page: String(safePage),
+    });
+  }
+
+  function onExportImportResultsCsv() {
+    if (importResults.length === 0) return;
+    const escapeCell = (value: string) => `"${value.replaceAll('"', '""')}"`;
+    const header = ["drawingNo", "result", "reason"].join(",");
+    const rows = importResults.map((item) =>
+      [item.drawingNo, item.ok ? "success" : "failed", item.reason ?? ""].map((cell) => escapeCell(cell)).join(","),
+    );
+    const csv = [header, ...rows].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "drawing-import-results.csv";
+    link.click();
+    URL.revokeObjectURL(url);
+  }
 
   async function onImport() {
     setSubmitting(true);
@@ -144,6 +239,12 @@ export default function AdminDrawingsPage() {
             <option value="IN_PRODUCTION">{t("filters.inProduction")}</option>
             <option value="COMPLETED">{t("filters.completed")}</option>
           </Select>
+          <div className="sm:col-span-3 flex justify-end gap-2">
+            <Button variant="outline" onClick={onResetFilters}>
+              {t("filters.reset")}
+            </Button>
+            <Button onClick={onApplyFilters}>{t("filters.apply")}</Button>
+          </div>
         </div>
 
         {feedback ? (
@@ -161,7 +262,8 @@ export default function AdminDrawingsPage() {
             {loading ? <p className="text-sm text-zinc-500">{t("status.loading")}</p> : null}
             {isEmpty ? <p className="text-sm text-zinc-500">{t("status.empty")}</p> : null}
             {!loading && !isEmpty ? (
-              <div className="overflow-x-auto">
+              <div className="space-y-3">
+                <div className="overflow-x-auto">
                 <Table>
                   <TableHead>
                     <TableRow>
@@ -199,6 +301,29 @@ export default function AdminDrawingsPage() {
                     ))}
                   </TableBody>
                 </Table>
+                </div>
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-zinc-500">
+                    {t("pagination.total", { count: pagination.total })} ·{" "}
+                    {t("pagination.page", { page: pagination.page, totalPages: pagination.totalPages })}
+                  </p>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => onPageChange(pagination.page - 1)}
+                      disabled={pagination.page <= 1}
+                    >
+                      {t("pagination.prev")}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => onPageChange(pagination.page + 1)}
+                      disabled={pagination.page >= pagination.totalPages}
+                    >
+                      {t("pagination.next")}
+                    </Button>
+                  </div>
+                </div>
               </div>
             ) : null}
           </CardContent>
@@ -218,6 +343,11 @@ export default function AdminDrawingsPage() {
                   placeholder={t("importPlaceholder")}
                 />
                 <div className="flex justify-end gap-2">
+                  {importResults.length > 0 ? (
+                    <Button variant="outline" onClick={onExportImportResultsCsv}>
+                      {t("exportImportResultCsv")}
+                    </Button>
+                  ) : null}
                   <Button variant="outline" onClick={() => setShowImport(false)} disabled={submitting}>
                     {t("closeButton")}
                   </Button>

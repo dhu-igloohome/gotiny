@@ -36,6 +36,7 @@
     "title": "Drawings",
     "subtitle": "Track progress and import in batch",
     "importButton": "Batch Import",
+    "exportImportResultCsv": "Export Import Results CSV",
     "closeButton": "Close",
     "submitImport": "Submit Import",
     "importPlaceholder": "Paste JSON array here",
@@ -51,7 +52,15 @@
       "customerName": "Filter by customer",
       "allStatus": "All statuses",
       "inProduction": "In production",
-      "completed": "Completed"
+      "completed": "Completed",
+      "apply": "Apply Filters",
+      "reset": "Reset"
+    },
+    "pagination": {
+      "total": "Total {count}",
+      "page": "Page {page}/{totalPages}",
+      "prev": "Previous",
+      "next": "Next"
     },
     "importResult": {
       "success": "Success",

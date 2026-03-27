@@ -18,6 +18,10 @@ export async function GET(request: Request) {
   const drawingNoKeyword = searchParams.get("drawingNo")?.trim();
   const customerKeyword = searchParams.get("customer")?.trim();
   const status = searchParams.get("status")?.trim();
+  const pageRaw = Number(searchParams.get("page") ?? "1");
+  const pageSizeRaw = Number(searchParams.get("pageSize") ?? "10");
+  const page = Number.isFinite(pageRaw) && pageRaw > 0 ? Math.floor(pageRaw) : 1;
+  const pageSize = Number.isFinite(pageSizeRaw) && pageSizeRaw > 0 ? Math.min(Math.floor(pageSizeRaw), 50) : 10;
 
   const where = {
     organizationId,
@@ -40,17 +44,22 @@ export async function GET(request: Request) {
     ...(status === "IN_PRODUCTION" || status === "COMPLETED" ? { status } : {}),
   };
 
-  const drawings = await prisma.drawing.findMany({
-    where,
-    include: {
-      operations: {
-        include: {
-          state: true,
+  const [total, drawings] = await prisma.$transaction([
+    prisma.drawing.count({ where }),
+    prisma.drawing.findMany({
+      where,
+      include: {
+        operations: {
+          include: {
+            state: true,
+          },
         },
       },
-    },
-    orderBy: { createdAt: "desc" },
-  });
+      orderBy: { createdAt: "desc" },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    }),
+  ]);
 
   const list = drawings.map((drawing) => {
     const plannedQty = drawing.plannedQty ?? drawing.demandQty;
@@ -72,5 +81,16 @@ export async function GET(request: Request) {
     };
   });
 
-  return NextResponse.json({ ok: true, drawings: list });
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+
+  return NextResponse.json({
+    ok: true,
+    drawings: list,
+    pagination: {
+      page,
+      pageSize,
+      total,
+      totalPages,
+    },
+  });
 }
