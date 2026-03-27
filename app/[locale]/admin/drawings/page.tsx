@@ -3,7 +3,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
+import { Filter, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
@@ -113,17 +115,20 @@ export default function AdminDrawingsPage() {
   }
 
   return (
-    <main className="min-h-screen bg-zinc-50 p-6">
-      <section className="mx-auto w-full max-w-6xl space-y-5">
+    <main className="space-y-5 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
+      <section className="space-y-5">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-semibold text-zinc-900">{t("title")}</h1>
             <p className="mt-1 text-sm text-zinc-600">{t("subtitle")}</p>
           </div>
-          <Button onClick={() => setShowImport(true)}>{t("importButton")}</Button>
+          <Button onClick={() => setShowImport(true)}>
+            <Upload className="mr-2 h-4 w-4" />
+            {t("importButton")}
+          </Button>
         </div>
 
-        <div className="grid gap-3 rounded-xl border border-zinc-200 bg-white p-4 sm:grid-cols-3">
+        <div className="grid gap-3 rounded-xl border border-zinc-200 bg-zinc-50 p-4 sm:grid-cols-3">
           <Input
             placeholder={t("filters.drawingNo")}
             value={filterDrawingNo}
@@ -141,7 +146,12 @@ export default function AdminDrawingsPage() {
           </Select>
         </div>
 
-        {feedback ? <p className="text-sm text-zinc-700">{feedback}</p> : null}
+        {feedback ? (
+          <div className="flex items-center gap-2 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-700">
+            <Filter className="h-4 w-4" />
+            <span>{feedback}</span>
+          </div>
+        ) : null}
 
         <Card>
           <CardHeader>
@@ -159,6 +169,7 @@ export default function AdminDrawingsPage() {
                       <TableHeaderCell>{t("columns.customerName")}</TableHeaderCell>
                       <TableHeaderCell>{t("columns.demandQty")}</TableHeaderCell>
                       <TableHeaderCell>{t("columns.goodQty")}</TableHeaderCell>
+                      <TableHeaderCell>{t("filters.allStatus")}</TableHeaderCell>
                       <TableHeaderCell>{t("columns.progress")}</TableHeaderCell>
                     </TableRow>
                   </TableHead>
@@ -173,6 +184,11 @@ export default function AdminDrawingsPage() {
                         <TableCell>{row.customerName || "-"}</TableCell>
                         <TableCell>{row.demandQty}</TableCell>
                         <TableCell>{row.goodQty}</TableCell>
+                        <TableCell>
+                          <Badge tone={row.status === "COMPLETED" ? "success" : "warning"}>
+                            {row.status === "COMPLETED" ? t("filters.completed") : t("filters.inProduction")}
+                          </Badge>
+                        </TableCell>
                         <TableCell>
                           <div className="space-y-1">
                             <Progress value={row.progressPercent} />

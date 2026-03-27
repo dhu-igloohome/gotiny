@@ -3,7 +3,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { CheckCircle2, Copy, LoaderCircle, QrCode, Timer } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 type OperationDetail = {
@@ -57,16 +60,33 @@ export default function DrawingDetailPage() {
 
   const operationCards = useMemo(() => drawing?.operations ?? [], [drawing?.operations]);
 
+  function getStatusTone(status: string): "neutral" | "success" | "warning" {
+    if (status === "COMPLETED") return "success";
+    if (status === "IN_PROGRESS") return "warning";
+    return "neutral";
+  }
+
+  async function copyQr(value: string) {
+    try {
+      await navigator.clipboard.writeText(value);
+    } catch {
+      // ignore clipboard errors in unsupported browsers
+    }
+  }
+
   return (
-    <main className="min-h-screen bg-zinc-50 p-6">
-      <section className="mx-auto w-full max-w-6xl space-y-6">
+    <main className="space-y-6 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
+      <section className="space-y-6">
         <Card>
           <CardHeader>
             <CardTitle>{t("detail.title")}</CardTitle>
           </CardHeader>
           <CardContent>
             {loading ? (
-              <p className="text-sm text-zinc-500">{t("status.loading")}</p>
+              <p className="flex items-center gap-2 text-sm text-zinc-500">
+                <LoaderCircle className="h-4 w-4 animate-spin" />
+                {t("status.loading")}
+              </p>
             ) : !drawing ? (
               <p className="text-sm text-zinc-500">{t("detail.notFound")}</p>
             ) : (
@@ -88,33 +108,62 @@ export default function DrawingDetailPage() {
           </CardContent>
         </Card>
 
-        <div className="grid gap-4 md:grid-cols-2">
-          {operationCards.map((op) => (
-            <Card key={op.id}>
+        <div className="space-y-4">
+          {operationCards.map((op, index) => (
+            <div key={op.id} className="relative">
+              {index < operationCards.length - 1 ? (
+                <div className="absolute left-4 top-16 h-[calc(100%-1rem)] w-px bg-zinc-300" />
+              ) : null}
+              <Card className="ml-8">
               <CardHeader>
-                <CardTitle>
-                  #{op.sequence} {op.name}
-                </CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle>
+                    #{op.sequence} {op.name}
+                  </CardTitle>
+                  <Badge tone={getStatusTone(op.status)}>{mapOpStatus(op.status, t)}</Badge>
+                </div>
               </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="grid grid-cols-2 gap-3">
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
                   <div>
                     <p className="text-xs text-zinc-500">{t("columns.goodQty")}</p>
-                    <p className="text-sm font-semibold text-zinc-900">{op.goodQty}</p>
+                    <p className="flex items-center gap-1 text-sm font-semibold text-zinc-900">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                      {op.goodQty}
+                    </p>
                   </div>
                   <div>
                     <p className="text-xs text-zinc-500">{t("detail.scrapQty")}</p>
-                    <p className="text-sm font-semibold text-zinc-900">{op.scrapQty}</p>
+                    <p className="flex items-center gap-1 text-sm font-semibold text-zinc-900">
+                      <Timer className="h-4 w-4 text-amber-600" />
+                      {op.scrapQty}
+                    </p>
                   </div>
                 </div>
-                <p className="text-xs text-zinc-600">
-                  {t("detail.operationStatus")}: {mapOpStatus(op.status, t)}
-                </p>
-                <div className="flex justify-center rounded-lg border border-zinc-200 bg-white p-3">
-                  <QRCodeSVG value={op.code || `${op.id}`} size={120} />
+
+                <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-3">
+                  <div className="mb-2 flex items-center justify-between">
+                    <p className="flex items-center gap-1 text-xs font-medium text-zinc-600">
+                      <QrCode className="h-3.5 w-3.5" />
+                      QR
+                    </p>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="h-7 px-2 text-xs"
+                      onClick={() => copyQr(op.code || `${op.id}`)}
+                    >
+                      <Copy className="mr-1 h-3.5 w-3.5" />
+                      Copy
+                    </Button>
+                  </div>
+                  <div className="flex justify-center rounded-lg border border-zinc-200 bg-white p-3">
+                    <QRCodeSVG value={op.code || `${op.id}`} size={120} />
+                  </div>
                 </div>
               </CardContent>
             </Card>
+            </div>
           ))}
         </div>
       </section>
