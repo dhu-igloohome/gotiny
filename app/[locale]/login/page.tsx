@@ -73,13 +73,15 @@ export default function LoginPage() {
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (!target) {
-      setError(method === "phone" ? "请先输入手机号" : "请先输入邮箱");
-      setMessage("");
-      return;
-    }
+    const passwordModeDetected =
+      method === "password" || (account.trim().length > 0 && password.trim().length > 0);
 
-    if (method === "password") {
+    if (passwordModeDetected) {
+      if (!account.trim()) {
+        setError("请输入账号");
+        setMessage("");
+        return;
+      }
       if (!password.trim()) {
         setError("请输入密码");
         setMessage("");
@@ -93,7 +95,7 @@ export default function LoginPage() {
         const response = await fetch("/api/auth/password-login", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ account: target, password: password.trim() }),
+          body: JSON.stringify({ account: account.trim(), password: password.trim() }),
         });
         const data = (await response.json()) as {
           error?: string;
@@ -113,6 +115,12 @@ export default function LoginPage() {
       } finally {
         setSubmitting(false);
       }
+      return;
+    }
+
+    if (!target) {
+      setError(method === "phone" ? "请先输入手机号" : "请先输入邮箱");
+      setMessage("");
       return;
     }
 
