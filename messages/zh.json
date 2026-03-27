@@ -1,5 +1,39 @@
 {
   "common": {
     "appName": "小单快报"
+  },
+  "admin": {
+    "title": "管理端看板",
+    "subtitle": "核心生产指标总览",
+    "cards": {
+      "totalPlannedQty": "总产量(计划)",
+      "goodRate": "合格率",
+      "scrapRate": "报废率",
+      "inProgressDrawingCount": "进行中的图纸数"
+    },
+    "actions": {
+      "viewDrawings": "查看图纸列表"
+    }
+  },
+  "drawings": {
+    "title": "图纸列表",
+    "subtitle": "查看图纸进度并支持批量导入",
+    "importButton": "批量导入",
+    "closeButton": "关闭",
+    "submitImport": "提交导入",
+    "importPlaceholder": "请输入 JSON 数组",
+    "columns": {
+      "drawingNo": "图纸编号",
+      "customerName": "客户名",
+      "demandQty": "需求数",
+      "goodQty": "总合格数",
+      "progress": "进度"
+    },
+    "status": {
+      "loading": "加载中...",
+      "empty": "暂无图纸",
+      "importSuccess": "导入成功",
+      "importFailed": "导入失败"
+    }
   }
 }

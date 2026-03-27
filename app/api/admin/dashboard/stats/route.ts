@@ -34,19 +34,33 @@ export async function GET() {
     }),
   ]);
 
+  const inProgressDrawingCount = await prisma.drawing.count({
+    where: {
+      organizationId,
+      status: {
+        in: ["IN_PRODUCTION", "OUTSOURCING"],
+      },
+    },
+  });
+
   const totalPlannedQty = (drawingAgg._sum.plannedQty ?? 0) + (drawingDemandFallbackAgg._sum.demandQty ?? 0);
   const totalGoodQty = stateAgg._sum.acceptedGoodQty ?? 0;
   const totalScrapQty = stateAgg._sum.scrapQty ?? 0;
   const progress = totalPlannedQty > 0 ? Number(((totalGoodQty / totalPlannedQty) * 100).toFixed(2)) : 0;
+  const goodRate = totalPlannedQty > 0 ? Number(((totalGoodQty / totalPlannedQty) * 100).toFixed(2)) : 0;
+  const scrapRate = totalPlannedQty > 0 ? Number(((totalScrapQty / totalPlannedQty) * 100).toFixed(2)) : 0;
 
   return NextResponse.json({
     ok: true,
     stats: {
       drawingCount: drawingAgg._count._all,
+      inProgressDrawingCount,
       totalPlannedQty,
       totalGoodQty,
       totalScrapQty,
       progressPercent: progress,
+      goodRatePercent: goodRate,
+      scrapRatePercent: scrapRate,
     },
   });
 }

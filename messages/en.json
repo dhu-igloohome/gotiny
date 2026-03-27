@@ -1,5 +1,39 @@
 {
   "common": {
     "appName": "GoTiny"
+  },
+  "admin": {
+    "title": "Admin Dashboard",
+    "subtitle": "Overview of core production metrics",
+    "cards": {
+      "totalPlannedQty": "Total Planned Output",
+      "goodRate": "Good Rate",
+      "scrapRate": "Scrap Rate",
+      "inProgressDrawingCount": "In-progress Drawings"
+    },
+    "actions": {
+      "viewDrawings": "View Drawings"
+    }
+  },
+  "drawings": {
+    "title": "Drawings",
+    "subtitle": "Track progress and import in batch",
+    "importButton": "Batch Import",
+    "closeButton": "Close",
+    "submitImport": "Submit Import",
+    "importPlaceholder": "Paste JSON array here",
+    "columns": {
+      "drawingNo": "Drawing No",
+      "customerName": "Customer",
+      "demandQty": "Demand",
+      "goodQty": "Good Qty",
+      "progress": "Progress"
+    },
+    "status": {
+      "loading": "Loading...",
+      "empty": "No drawings yet",
+      "importSuccess": "Import completed",
+      "importFailed": "Import failed"
+    }
   }
 }

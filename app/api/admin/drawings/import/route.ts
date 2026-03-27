@@ -18,15 +18,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Admin role required." }, { status: 403 });
   }
 
-  const body = (await request.json().catch(() => null)) as ImportPayload | null;
-  if (!body?.drawings) {
+  const body = (await request.json().catch(() => null)) as ImportPayload | ImportDrawingInput[] | null;
+  const drawings = Array.isArray(body) ? body : body?.drawings;
+  if (!drawings) {
     return NextResponse.json({ error: "drawings payload is required." }, { status: 400 });
   }
 
   const service = new AdminDrawingService(context.organizationId);
 
   try {
-    const created = await service.importDrawings(body.drawings, context.userId);
+    const created = await service.importDrawings(drawings, context.userId);
     return NextResponse.json({
       ok: true,
       importedCount: created.length,
