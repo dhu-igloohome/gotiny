@@ -30,6 +30,7 @@ export default function TestReportPage() {
 
   const parsedGood = useMemo(() => Number(goodQty), [goodQty]);
   const parsedScrap = useMemo(() => Number(scrapQty), [scrapQty]);
+  const isDevelopment = process.env.NODE_ENV === "development";
 
   async function loadState() {
     console.log("[test-report] loadState:start", { url: DEBUG_API_URL });
@@ -183,6 +184,11 @@ export default function TestReportPage() {
   }
 
   return (
+    !isDevelopment ? (
+      <main className="min-h-screen flex items-center justify-center bg-zinc-50 p-6">
+        <p className="text-sm text-zinc-600">Test debug tools are only available in development.</p>
+      </main>
+    ) : (
     <main className="min-h-screen bg-zinc-50 p-6">
       <section className="mx-auto w-full max-w-3xl rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm space-y-5">
         <h1 className="text-2xl font-semibold text-zinc-900">报工事务调试页</h1>
@@ -276,5 +282,6 @@ export default function TestReportPage() {
         </pre>
       </section>
     </main>
+    )
   );
 }

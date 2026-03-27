@@ -30,6 +30,11 @@ function isProtectedApiPath(pathname: string): boolean {
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const isDev = process.env.NODE_ENV === "development";
+
+  if (!isDev && (pathname === "/test-report" || pathname.startsWith("/api/test-debug/"))) {
+    return NextResponse.json({ error: "Not found." }, { status: 404 });
+  }
 
   if (isPublicPath(pathname)) {
     return NextResponse.next();

@@ -16,6 +16,10 @@ type DebugReportPayload = {
 };
 
 export async function GET() {
+  if (process.env.NODE_ENV !== "development") {
+    return NextResponse.json({ error: "Not found." }, { status: 404 });
+  }
+
   const prisma = getPrismaClient();
   const state = await prisma.operationState.findFirst({
     where: {
@@ -44,6 +48,10 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  if (process.env.NODE_ENV !== "development") {
+    return NextResponse.json({ error: "Not found." }, { status: 404 });
+  }
+
   const body = (await request.json().catch(() => null)) as DebugReportPayload | null;
   if (!body) {
     return NextResponse.json({ error: "Invalid payload." }, { status: 400 });
